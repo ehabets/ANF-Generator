@@ -42,7 +42,7 @@ function [Cxy, f] = cohere_mod(varargin)
 %   Copyright (c) 1988-98 by The MathWorks, Inc.
 %   $Revision: 1.1 $  $Date: 1998/06/03 14:42:19 $
 
-error(nargchk(2,7,nargin))
+narginchk(2,7);
 x = varargin{1};
 y = varargin{2};
 %[msg,nfft,Fs,window,noverlap,p,dflag]=psdchk(varargin(3:end),x,y);
@@ -98,8 +98,8 @@ for i=1:k
 end
 
 % Select first half
-if ~any(any(imag([x y])~=0)),   % if x and y are not complex
-    if rem(nfft,2),    % nfft odd
+if ~any(any(imag([x y])~=0))   % if x and y are not complex
+    if rem(nfft,2)    % nfft odd
         select = 1:(nfft+1)/2;
     else
         select = 1:nfft/2+1;   % include DC AND Nyquist
@@ -118,12 +118,12 @@ Coh = Pxy./sqrt(Pxx.*Pyy); % coherence function estimate
 freq_vector = (select - 1)'*Fs/nfft;
 
 % set up output parameters
-if (nargout == 2),
+if (nargout == 2)
    Cxy = Coh.';
    f = freq_vector;
-elseif (nargout == 1),
+elseif (nargout == 1)
    Cxy = Coh;
-elseif (nargout == 0),   % do a plot
+elseif (nargout == 0)   % do a plot
    newplot;
    plot(freq_vector,Coh), grid on
    xlabel('Frequency'), ylabel('Coherence Function Estimate');

@@ -4,7 +4,7 @@
 % of sensors.
 %
 % Author        : E.A.P. Habets
-% Date          : 21-08-2009
+% Date          : 29-06-2017
 %
 % Related paper : E.A.P. Habets, I. Cohen and S. Gannot, 'Generating
 %                 nonstationary multisensor signals under a spatial
@@ -14,7 +14,7 @@
 % Remark        : For babble speech the Cholesky decomposition is often
 %                 preferred.
 %
-% Copyright (C) 2009 E.A.P. Habets, United Kingdom.
+% Copyright (C) 2009-2017 E.A.P. Habets
 %  
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ type_nf = 'spherical';    % Type of noise field:
 L = 20*Fs;                % Data length
 
 % Generate 'independent' babble speech input signals
-[data,Fs_data] = wavread('babble_8kHz.wav');
+[data,Fs_data] = audioread('babble_8kHz.wav');
 if Fs ~= Fs_data
     error('Sample frequency of input file is incorrect.');
 end
@@ -123,4 +123,4 @@ for m = 1:MM
 end
 
 % Save Babble Speech
-wavwrite(x,Fs,'mc_babble_speech_example.wav');
+audiowrite('mc_babble_speech_example.wav',x,Fs);
