@@ -4,14 +4,14 @@
 % linear array of sensors.
 %
 % Author        : E.A.P. Habets
-% Date          : 29-06-2017
+% Date          : 17-12-2019
 %
 % Related paper : E.A.P. Habets, I. Cohen and S. Gannot, 'Generating
 %                 nonstationary multisensor signals under a spatial
 %                 coherence constraint', Journal of the Acoustical Society
 %                 of America, Vol. 124, Issue 5, pp. 2911-2917, Nov. 2008.
 %
-% Copyright (C) 2009-2017 E.A.P. Habets
+% Copyright (C) 2009-2019 E.A.P. Habets
 %  
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ for m = 1:M-1
             sc_theory(m,:) = bessel(0,ww*m*d/c);
     end
     
-    [sc_tmp, Freqs]=cohere_mod(x(:,1),x(:,m+1),K_eval,Fs,hanning(K_eval),0.75*K_eval);
+    [sc_tmp, Freqs]=complex_cohere(x(:,1),x(:,m+1),K_eval,Fs,hanning(K_eval),0.75*K_eval);
     sc_generated(m,:) = real(sc_tmp.');
 end
 
