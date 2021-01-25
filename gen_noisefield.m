@@ -1,54 +1,37 @@
-%--------------------------------------------------------------------------
+% DESCRIPTION:
+%   Example that generates an isotopic noisy field received by a uniform 
+%   linear array of sensors.
 %
-% Example that generates an isotopic noisy field received by a uniform 
-% linear array of sensors.
+% REFERENCE:
+%   E.A.P. Habets, I. Cohen and S. Gannot, 'Generating
+%   nonstationary multisensor signals under a spatial
+%   coherence constraint', Journal of the Acoustical Society
+%   of America, Vol. 124, Issue 5, pp. 2911-2917, Nov. 2008.
 %
-% Author        : E.A.P. Habets
-% Date          : 17-12-2019
+% REMARKS:
+%   For babble speech the Cholesky decomposition is preferred over the
+%   eigenvalue decomposition.
 %
-% Related paper : E.A.P. Habets, I. Cohen and S. Gannot, 'Generating
-%                 nonstationary multisensor signals under a spatial
-%                 coherence constraint', Journal of the Acoustical Society
-%                 of America, Vol. 124, Issue 5, pp. 2911-2917, Nov. 2008.
-%
-% MIT License
-%
-% Copyright (C) 2009-2019 E.A.P. Habets
-%  
-% Permission is hereby granted, free of charge, to any person obtaining a copy
-% of this software and associated documentation files (the "Software"), to deal
-% in the Software without restriction, including without limitation the rights
-% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-% copies of the Software, and to permit persons to whom the Software is
-% furnished to do so, subject to the following conditions:
-%
-% The above copyright notice and this permission notice shall be included in all
-% copies or substantial portions of the Software.
-%
-% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-% SOFTWARE.
-%
-%--------------------------------------------------------------------------
+% REVISION HISTORY:
+%   2008 - E.A.P. Habets
+%       * Initial implementation
+%   25/01/2021 - E.A.P. Habets
+%       * Removed third-party dependencies
 
 close all;
 clear;
 
 % Initialization
-Fs = 8000;                % Sample frequency (Hz)
-c = 340;                  % Sound velocity (m/s)
-K = 256;                  % FFT length
-M = 2;                    % Number of sensors
-d = 0.2;                  % Inter sensor distance (m)
-type_nf = 'spherical';    % Type of noise field:
-                          % 'spherical' or 'cylindrical'
-L = 10*Fs;                % Data length
+Fs = 8000; % Sample frequency (Hz)
+c = 340; % Sound velocity (m/s)
+K = 256; % FFT length
+M = 2; % Number of sensors
+d = 0.2; % Inter sensor distance (m)
+type_nf = 'spherical'; % Type of noise field: 'spherical' or 'cylindrical'
+L = 10*Fs; % Data length
 
 %% Generate M mutually independent input signals of length L
+rng(1);
 n = randn(L,M);
 
 %% Generate matrix with desired spatial coherence
@@ -74,7 +57,6 @@ for p = 1:M
 end
 
 %% Generate sensor signals with desired spatial coherence
-% Mix signals
 x = mix_signals(n,DC,'cholesky');
 
 %% Compare desired and generated coherence
@@ -82,7 +64,13 @@ K_eval = 256;
 ww = 2*pi*Fs*(0:K_eval/2)/K_eval;
 sc_theory = zeros(M-1,K/2+1);
 sc_generated = zeros(M-1,K/2+1);
-% Calculate desired and generated coherence
+
+% Calculalte STFT and PSD of all output signals
+X = stft(x,'Window',hanning(K_eval),'OverlapLength',0.75*K_eval,'FFTLength',K_eval,'Centered',false);
+X = X(1:K_eval/2+1,:,:);
+phi_x = mean(abs(X).^2,2);
+
+% Calculate spatial coherence of desired and generated signals
 for m = 1:M-1
     switch lower(type_nf)
         case 'spherical'
@@ -92,19 +80,23 @@ for m = 1:M-1
             sc_theory(m,:) = bessel(0,ww*m*d/c);
     end
     
-    [sc_tmp, Freqs]=complex_cohere(x(:,1),x(:,m+1),K_eval,Fs,hanning(K_eval),0.75*K_eval);
-    sc_generated(m,:) = real(sc_tmp.');
+    % Compute cross-PSD of x_1 and x_(m+1)
+    psi_x =  mean(X(:,:,1) .* conj(X(:,:,m+1)),2);
+    
+    % Compute real-part of complex coherence between x_1 and x_(m+1)
+    sc_generated(m,:) = real(psi_x ./ sqrt(phi_x(:,1,1) .* phi_x(:,1,m+1))).';
 end
 
-% Calculate mean square error
-MSE = zeros(M,1);
+% Calculate normalized mean square error
+NMSE = zeros(M,1);
 for m = 1:M-1
-    MSE(m) = 10*log10(sum(((sc_theory(m,:))-(sc_generated(m,:))).^2)./sum((sc_theory(m,:)).^2));
+    NMSE(m) = 10*log10(sum(((sc_theory(m,:))-(sc_generated(m,:))).^2)./sum((sc_theory(m,:)).^2));
 end
 
 % Plot spatial coherence of two sensor pairs
 figure(1);
 MM=min(2,M-1);
+Freqs=0:(Fs/2)/(K/2):Fs/2;
 for m = 1:MM
     subplot(MM,1,m);
     plot(Freqs/1000,sc_theory(m,:),'-k','LineWidth',1.5)
@@ -112,8 +104,8 @@ for m = 1:MM
     plot(Freqs/1000,sc_generated(m,:),'-.b','LineWidth',1.5)
     hold off;
     xlabel('Frequency [kHz]');
-    ylabel('Spatial Coherence');
+    ylabel('Real(Spatial Coherence)');
     title(sprintf('Inter sensor distance %1.2f m',m*d));
-    legend('Theory',sprintf('Proposed Method (MSE = %2.1f dB)',MSE(m)));
+    legend('Theory',sprintf('Proposed Method (NMSE = %2.1f dB)',NMSE(m)));
     grid on; 
 end

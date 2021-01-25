@@ -1,28 +1,39 @@
 function x = mix_signals(n,DC,method)
-
-% Mix M mutually indepedent signals such that the mixed signals 
-% exhibit a specific spatial coherence.
+% SYNTAX:
+%   x = mix_signals(n,DC,method)
 %
-% Input parameters:
-%       n      : M signals in the STFT domain [L x M]
-%       DC     : Desired coherence [M x M x K/2+1]
-%       method : 'cholesky' or 'eigen'
+% DESCRIPTION:
+%   Mix M mutually indepedent signals n of length L such that the
+%   mixed signals exhibit a specific spatial coherence given by DC.
 %
-% Output parameters:
-%       x      : M generated signals [L x M]
+% INPUT:
+%   x - (double) M signals in the time domain [L x M]
+%   DC - (double) Desired spatial coherence [M x M x K/2+1]
+%   method - 'cholesky' (default) or 'eigen'
 %
-% Author       : E.A.P. Habets
-% Date         : 29-06-2017
+% OUTPUT:
+%   x - (double) M output signals of length L in the time domain [L x M]
 %
-% Reference    : E.A.P. Habets, I. Cohen and S. Gannot, 'Generating 
-%                nonstationary multisensor signals under a spatial 
-%                coherence constraint', Journal of the Acoustical Society
-%                of America, Vol. 124, Issue 5, pp. 2911-2917, Nov. 2008.
+% ASSUMPTIONS AND LIMITATIONS:
+%   Assumes output signals are fully coherent at 0 Hz
+%
+% REFERENCE:
+%   E.A.P. Habets, I. Cohen and S. Gannot, 'Generating
+%   nonstationary multisensor signals under a spatial
+%   coherence constraint', Journal of the Acoustical Society
+%   of America, Vol. 124, Issue 5, pp. 2911-2917, Nov. 2008.
+%
+% REVISION HISTORY:
+%   2008 - E.A.P. Habets
+%       * Initial implementation
+%   25/01/2021 - E.A.P. Habets
+%       * Changed license to MIT
+%       * Removed third-party dependencies
 
 % MIT License
 %
-% Copyright (C) 2009-2017 E.A.P. Habets
-%  
+% Copyright (C) 2021 E.A.P. Habets
+%
 % Permission is hereby granted, free of charge, to any person obtaining a copy
 % of this software and associated documentation files (the "Software"), to deal
 % in the Software without restriction, including without limitation the rights
@@ -48,38 +59,31 @@ if nargin < 3
 end
 
 M = size(n,2); % Number of sensors
-L = size(n,1); % Length input signal
-K = (size(DC,3)-1)*2;
+K = (size(DC,3)-1)*2; % Number of frequency bins
 
-% Short-time Fourier transform
-for m = 1 : M
-    N(m,:,:) = stft(n(:,m), K, K/4, 1).';
-end
+% Compute short-time Fourier transform (STFT) of all input signals
+n = [zeros(K/2,M) ; n ; zeros(K/2,M)];
+N = stft(n,'Window',hanning(K),'OverlapLength',0.75*K,'FFTLength',K,'Centered',false);
 
-% Initialization
-C = zeros(size(DC)); % STFT mixing matrix
-X = zeros(size(N));  % STFT output matrix
-X(:,:,1) = X(1,1,1);
-
-% Generate output in the STFT domain for each frequency bin k
+% Generate output signal in the STFT domain for each frequency bin k
+X = zeros(size(N)); % STFT output matrix
 for k = 2:K/2+1
     switch lower(method)
         case 'cholesky'
-            C(:,:,k) = chol(DC(:,:,k));
+            C = chol(DC(:,:,k));
             
         case 'eigen'
             [V,D] = eig(DC(:,:,k));
-            C(:,:,k) = sqrt(D) * V';
+            C = sqrt(D) * V';
             
         otherwise
             error('Unknown method specified.');
     end
     
-    X(:,:,k) = C(:,:,k)' * N(:,:,k);
+    X(k,:,:) = squeeze(N(k,:,:)) * conj(C);
 end
+X(K/2+2:end,:,:) = conj(X(end:-1:K/2+2,:,:));
 
-% Inverse STFT
-for m = 1 : M
-    x(:,m) = real(istft(squeeze(X(m,:,:)).', K, K/4, 1));
-end
-x = x(1:L,:);
+% Compute inverse STFT
+x = istft(X,'Window',hanning(K),'OverlapLength',0.75*K,'FFTLength',K,'Centered',false,'ConjugateSymmetric',true);
+x = x(K/2+1:end-K/2,:);
