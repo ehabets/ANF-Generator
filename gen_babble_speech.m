@@ -63,6 +63,13 @@ for p = 1:M
     end
 end
 
+if M>=6
+    EPS = 1e-10;
+    for k = 1:K/2+1
+        DC(:,:,k) = DC(:,:,k) + EPS*eye(M);
+    end
+end
+
 %% Generate sensor signals with desired spatial coherence
 x = mix_signals(babble,DC,'cholesky');
 
